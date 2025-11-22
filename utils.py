@@ -1,5 +1,6 @@
-# utils.py -> Reusable Functions which are not used anywhere else in the code
+# utils.py -> Reusable Funct
 import json
+import os
 
 def save_data(file_path, data):
     if not data:
@@ -22,5 +23,16 @@ def load_data(file_path):
         return data
     
 
+def check_file_exists(file_path) -> bool:
+
+    return os.path.isfile(file_path)
+
+
+
+def get_line_delimiter():
+
+    delimiter = "------------"
+
+    return delimiter
 
 

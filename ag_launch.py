@@ -1,18 +1,29 @@
 import ag_core
 import re
 import uuid
+import logging
 
 import constants
 import utils
+from decimal import Decimal, InvalidOperation
+import log_config
+
 
 def launch():
     grocery_list = ag_core.get_grocery_list()
+    print("Welcome to your Agamid Grocery List Manager!")
     while True:
         command = input("Enter a command (add, remove, edit, search, list, export, quit): ")
 
         if command == "add":
             name, store, cost, amount, priority, buy = get_inputs()
-            ag_core.add_item(grocery_list, name = name, store = store, cost = cost, amount = amount, priority = priority, buy = buy)
+            ag_core.add_item(grocery_list, 
+                             name = name, 
+                             store = store, 
+                             cost = cost, 
+                             amount = amount, 
+                             priority = priority, 
+                             buy = buy)
         
         if command == "remove":
             handle_remove_command(grocery_list)
@@ -38,80 +49,128 @@ def launch():
             break
 
 
+def get_line_delimiter():
+    print("-----------------")
+
+
 def get_inputs():
-    while True:
-        name = input("item name: ")
-        if name:
-            break
-        print("Invalid input. Please enter a valid item")
+        
+    name = get_name_input()
+    get_line_delimiter()
 
-    while True:
-        store = input("Store name: ")
-        if store == "skip":
-            store = None
-            break
-        elif store:
-            store = store
-            break
-        print("Invalid input. Please add a valid store name")
+    store = get_store_input()
+    get_line_delimiter()
 
-    while True:
-        try:
-            cost = input("item price: ")
-            if cost == "skip":
-                cost = None
-                break
-            else:
-                cost = float(cost)
-                break
-        except ValueError:
-            print("Invalid input. Please enter a valid price")
+    cost = get_cost_input()
+    get_line_delimiter()
 
-    while True:
-        try:
-            amount = input("Item quantity: ")
-            if amount == "skip":
-                amount = None
-                break
-            elif int(amount) > 0:
-                amount = int(amount)
-                break
-            else:
-                print("Quantity must be a positive number")
-        except ValueError:
-            print("Invalid input. Please enter a valid quantity")
+    amount = get_amount_input()
+    get_line_delimiter()
 
-    while True:
-        try:
-            priority = input("Priority: ")
-            if priority == "skip":
-                priority = None
-                break
-            elif 1 <= int(priority) <= 5:
-                break
-            else:
-                print("Priority must be between 1 and 5")
-        except ValueError:
-            print("Invalid input. Please enter a number between 1 and 5")
+    priority = get_priority_input()
+    get_line_delimiter()
 
-    while True:
-        try:
-            buy = input("Buy: ")
-            if buy.lower() =="true":
-                buy = True
-                break
-            elif buy.lower() == "false":
-                buy = False
-                break
-            elif buy == "skip":
-                buy = "skip"
-                break
-            else:
-                print("Invalid input. Please enter true or false")
-        except ValueError:
-            print("Invalid input. Please enter 'true' or 'false'")
-
+    buy = get_buy_input()
+    get_line_delimiter()
+    
     return name, store, cost, amount, priority, buy
+
+
+def get_name_input():
+    
+    name = input("Item Name: ").strip()
+    if not name:
+        name = constants.NAME_DEFAULT
+        
+    return name
+
+
+def get_store_input():
+
+    store = input("Store name: ").strip()
+    if store == "skip" or store == "":
+        store = constants.STORE_DEFAULT
+
+    return store
+
+
+def get_cost_input():
+    raw = input("Item Price: ").strip()
+
+    # Handle skip / empty
+    if raw.lower() == "skip" or raw == "":
+        return constants.COST_DEFAULT
+
+    # Try convert to Decimal
+    try:
+        return Decimal(raw)
+    except InvalidOperation:
+        print(
+            "Invalid input. Please enter a valid price with numbers ONLY,\n"
+            "and no currency symbols."
+        )
+        return get_cost_input()
+
+
+def get_amount_input():
+
+    amount = input("Item Quantity: ").strip()
+
+    if amount == "skip" or amount == "":
+        amount = None
+    
+    try:
+        int(amount)
+        if amount > 0:
+            return amount
+        else:
+            print("Please enter a positive number.")
+            return get_amount_input()
+    except ValueError:
+        print(
+            "Invalid Input. Please enter a positive number."
+        )
+        return get_amount_input()
+
+
+def get_priority_input():
+
+    priority = input("Priority (1-5): ").strip()
+
+    if priority == "skip" or priority == "":
+        priority = None
+        return priority
+    
+    try:
+        priority = int(priority)
+        if 1 <= priority <= 5:
+            return priority
+        else:
+            print("Priority must be between 1 and 5.")
+            return get_priority_input()
+    except ValueError:
+        print("Invalid input. Enter a number between 1 and 5.")
+        return get_priority_input()
+
+
+def get_buy_input():
+
+    try:
+        buy = input("Buy: ")
+        if buy.lower() == "true":
+            buy = True
+            return buy
+        elif buy.lower() == "false":
+            buy = False
+            return buy
+        elif buy == "skip":
+            return None
+        else:
+            print("Invalid input. Please enter true or false.")
+            return get_buy_input()
+    except ValueError:
+        print("Invalid Input. Please enter 'true' or 'false'")
+        return get_buy_input()
 
 
 def handle_remove_command(grocery_list):

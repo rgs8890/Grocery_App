@@ -1,6 +1,7 @@
 import re
 import uuid
 import os
+import logging
 
 import constants
 import utils
@@ -72,6 +73,15 @@ def add_item(grocery_list, name, store, cost, amount, priority, buy, category = 
     }
     
     grocery_list.append(item)
+
+    file_path = os.path.join(
+        constants.EXPORT_PATH, f"{constants.GROCERY_LIST}.json"
+    )
+
+    utils.save_data(file_path, grocery_list)
+    logging.info(
+        f"Added: {name} {store} {cost} {amount} {priority} {buy} {unique_id}"
+    )
 
 
 def search_item(id: int, grocery_list: list) -> None:
@@ -145,14 +155,43 @@ def calculate_total_cost(list, round_cost = True):
 def export_items(grocery_list):
     buy_list = []
 
-    for item in grocery_list:
-        if item["buy"]:
-            buy_list.append(item)
+    os.makedirs(constants.EXPORT_PATH, exist_ok=True)
 
-    if buy_list:
-        for item in buy_list:
-            print(f"name: {item['name']} - store: {item['store']} - cost: ${item['cost']} - amount: {item['amount']} - priority: {item['priority']}")
+    file_path = os.path.join(constants.EXPORT_PATH, "export_grocery_list.txt")
 
-        total_cost = calculate_total_cost(buy_list, round_cost=True)
+    if utils.check_file_exists(file_path):
+        print("The file already exists. \n" \
+        "The file will be overwritten.")
+    
+    buy_list = [item for item in grocery_list if item["buy"]]
 
-        print(f"The total cost is ${total_cost}")
+    if not buy_list:
+        print("No items to export")
+        return None
+
+    try:
+        with open(file_path, "w") as file:
+            for idx, item in enumerate(buy_list, start = 1):
+                line = (
+                    f"item {idx} | "
+                    f"name: {item['name']} | "
+                    f"store: {item['store']} | "
+                    f"cost: {item['cost']} | "
+                    f"amount: {item['amount']} | "
+                    f"priority: {item['priority']}\n"
+                )
+                file.write(line)
+
+            # Add a separator line
+            file.write("\n")
+
+            # Calculate total cost
+            total_cost = calculate_total_cost(buy_list, round_cost=True)
+            file.write(f"The total cost is ${total_cost}\n")
+
+            print(f"Export complete → {file_path}")
+    
+    except PermissionError as E:
+        print("Error: Unable to write to the export file due to permissions.")
+        print("Try running the program with different permissions or choose another folder.")
+        logging.error("PermissionError while writing to %s: %s", file_path, E)
