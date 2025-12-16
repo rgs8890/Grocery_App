@@ -6,192 +6,177 @@ import logging
 import constants
 import utils
 
-def get_grocery_list():
-    '''
-    Retreiving the grocery_list from the path specified by the constants variable in utils.py
-    '''
+from grocery_item import GroceryItem
 
-    os.makedirs(constants.EXPORT_PATH, exist_ok=True)
+class GroceryList:
+    def __init__(self):
+        self.grocery_list_path = os.path.join(
+            constants.EXPORT_PATH, f"{constants.GROCERY_LIST}.json"
+        )
 
-    file_path = os.path.join(constants.EXPORT_PATH, f"{constants.GROCERY_LIST}.json")
+        self.grocery_list = []
+        self.set_grocery_list()
 
-    if os.path.exists(file_path):
-        grocery_list = utils.load_data(file_path)
+    # def load_data(self):
+    #     grocery_list = []
+    #     json_data = utils.load_data(self.grocery_list_path)
+
+    #     for item in json_data:
+    #         grocery_item = GroceryItem()
+
+    def add_item(self, grocery_list, name, store, cost, amount, priority, buy, category = None, expiration_date = None):
+        '''
+        Adding an item to the grocery list
+        '''
+
+        # Generate a random UUID
+        unique_id = int(uuid.uuid4())
+
+        grocery_item = GroceryItem()
+
+        grocery_item.name = name
+        grocery_item.store = store
+        grocery_item.cost = cost
+        grocery_item.amount = amount
+        grocery_item.priority = priority
+        grocery_item.buy = buy
+        grocery_item.id = unique_id
+
+        grocery_list = self.get_grocery_list()
+        
+        self.grocery_list.append(grocery_item)
+
+        file_path = os.path.join(
+            constants.EXPORT_PATH, f"{constants.GROCERY_LIST}.json"
+        )
+
+        utils.save_data(self.grocery_list_path, self.grocery_list)
+        logging.info(
+            f"Added: {name} {store} {cost} {amount} {priority} {buy} {unique_id}"
+        )
+
+    def edit_item(self, grocery_list, name, id, store = None, cost = None, amount = None, priority = None, buy = "skip"):
     
-    else:
-        print("No JSON path found, creating JSON path")
-        grocery_list = []
-        utils.save_data(file_path, grocery_list)
-    
-    return grocery_list
+        index = self.get_index_from_id(id)
 
+        current_item = self.grocery_list[index]
 
-grocery_list = get_grocery_list()
+        if name:
+            current_item.name = name
+        
+        if cost:
+            current_item.cost = cost
+        
+        if amount:
+            current_item.amount = amount
 
-
-def get_index_from_id(id, grocery_list):
-    '''
-    Function to get the index from the ID
-    '''
-
-    index = 0
-    for item in grocery_list:
-        if item["id"] == id:
-            return index
+        if priority:
+            current_item.priority = priority
+        
+        if buy == "skip":
+            pass
         else:
-            index += 1
+            current_item.buy = buy
+        
+        if id:
+           current_item.id = id
+        
+        utils.save_data(self.grocery_list_path, self.grocery_list)
+
+    def list_items(self, grocery_list):
+        '''
+        Prints all items in the list.
+        Adds the item number to the string.
+        '''
+        item_num = 1
+        
+        for item in grocery_list:
+            print(item)
+
+    def search_item(self, id: int, grocery_list: list) -> None:
+        try:
+            index = self.get_index_from_id(id)
+            item = grocery_list[index]
+            return item
+        except IndexError:
+            print("Item is not found")
+            return None
+
+    def remove_item(self, id, grocery_list):
+        
+        index = self.get_index_from_id(id)
+        
+        self.grocery_list.pop(index)
+
+        utils.save_data(self.grocery_list_path, self.grocery_list)
 
 
-def get_index_from_name(name, grocery_list):
+    def get_index_from_name(self, name, grocery_list):  
+        index = 0
+
+        for item in grocery_list:
+            if item["name"] == name:
+                return index
+            else:
+                index += 1
     
-    index = 0
+    def get_index_from_id(self, id, grocery_list):
+        '''
+        Get the index from the given id
 
-    for item in grocery_list:
-        if item["name"] == name:
-            return index
-        else:
-            index += 1
+        Args:
+            id (int): id number from the grocery_list item
+        
+        Returns:
+            int: The index of the grocery item in the grocery_list
+        '''
+        index = 0
+        for item in grocery_list:
+            if item.id == id:
+                return index
+            else:
+                index += 1
 
+    def export_items(self, grocery_list):
+        buy_list = []
 
-def add_item(grocery_list, name, store, cost, amount, priority, buy, category = None, expiration_date = None):
-    '''
-    Adding an item to the grocery list
-    '''
+        os.makedirs(constants.EXPORT_PATH, exist_ok=True)
 
-    unique_id = int(uuid.uuid4())
+        file_path = os.path.join(constants.EXPORT_PATH, "export_grocery_list.txt")
 
-    item = {
-    "name": name, 
-    "store": store, 
-    "cost": cost, 
-    "amount": amount, 
-    "priority": priority, 
-    "buy": buy, 
-    "category": category, 
-    "expiration_date": expiration_date,
-    "unique_id": unique_id
-    }
-    
-    grocery_list.append(item)
+        if utils.check_file_exists(file_path):
+            print("The file already exists. \n" \
+            "The file will be overwritten.")
+        
+        buy_list = [item for item in grocery_list if item.buy]
 
-    file_path = os.path.join(
-        constants.EXPORT_PATH, f"{constants.GROCERY_LIST}.json"
-    )
+        if not buy_list:
+            print("No items to export")
+            return None
 
-    utils.save_data(file_path, grocery_list)
-    logging.info(
-        f"Added: {name} {store} {cost} {amount} {priority} {buy} {unique_id}"
-    )
+        try:
+            with open(file_path, "w") as file:
+                for idx, item in enumerate(buy_list, start = 1):
+                    line = (
+                        f"item {idx} | "
+                        f"name: {item['name']} | "
+                        f"store: {item['store']} | "
+                        f"cost: {item['cost']} | "
+                        f"amount: {item['amount']} | "
+                        f"priority: {item['priority']}\n"
+                    )
+                    file.write(line)
 
+                # Add a separator line
+                file.write("\n")
 
-def search_item(id: int, grocery_list: list) -> None:
+                # Calculate total cost
+                total_cost = self.calculate_total_cost(buy_list, round_cost=True)
+                file.write(f"The total cost is ${total_cost}\n")
 
-    try:
-        index = get_index_from_id(id)
-        item = grocery_list[index]
-        return item
-    except IndexError:
-        print("Item is not found")
-        return None
-
-
-def remove_item(id, grocery_list):
-    index = get_index_from_id(id)
-
-    grocery_list.pop(index)
-
-
-def edit_item(grocery_list, name, id, store = None, cost = None, amount = None, priority = None, buy = "skip"):
-    
-    index = get_index_from_id(id)
-
-    old_item = grocery_list[index]
-
-    if not store:
-        store = old_item["store"]
-    
-    if not cost:
-        cost = old_item["cost"]
-    
-    if not amount:
-        amount = old_item["amount"]
-
-    if not priority:
-        priority = old_item["priority"]
-    
-    if buy == "skip":
-        buy = old_item["buy"]
-    
-    if not id:
-        id = old_item["id"]
-    
-    item = {
-        "name": name,
-        "store": store,
-        "cost": cost, 
-        "amount": amount, 
-        "priority": priority, 
-        "buy": buy,
-        "id": id
-        }
-
-    grocery_list[index] = item
-
-
-def list_items(grocery_list):
-    for item in grocery_list:
-        print(item)
-
-def calculate_total_cost(list, round_cost = True):
-    total_cost = 0
-    for item in list:
-        if round_cost:
-            total_cost += round(item["cost"] * item["amount"])
-        else:
-            total_cost += (item["cost"] * item["amount"])
-    return total_cost
-    
-
-def export_items(grocery_list):
-    buy_list = []
-
-    os.makedirs(constants.EXPORT_PATH, exist_ok=True)
-
-    file_path = os.path.join(constants.EXPORT_PATH, "export_grocery_list.txt")
-
-    if utils.check_file_exists(file_path):
-        print("The file already exists. \n" \
-        "The file will be overwritten.")
-    
-    buy_list = [item for item in grocery_list if item["buy"]]
-
-    if not buy_list:
-        print("No items to export")
-        return None
-
-    try:
-        with open(file_path, "w") as file:
-            for idx, item in enumerate(buy_list, start = 1):
-                line = (
-                    f"item {idx} | "
-                    f"name: {item['name']} | "
-                    f"store: {item['store']} | "
-                    f"cost: {item['cost']} | "
-                    f"amount: {item['amount']} | "
-                    f"priority: {item['priority']}\n"
-                )
-                file.write(line)
-
-            # Add a separator line
-            file.write("\n")
-
-            # Calculate total cost
-            total_cost = calculate_total_cost(buy_list, round_cost=True)
-            file.write(f"The total cost is ${total_cost}\n")
-
-            print(f"Export complete → {file_path}")
-    
-    except PermissionError as E:
-        print("Error: Unable to write to the export file due to permissions.")
-        print("Try running the program with different permissions or choose another folder.")
-        logging.error("PermissionError while writing to %s: %s", file_path, E)
+                print(f"Export complete → {file_path}")
+        
+        except PermissionError as E:
+            print("Error: Unable to write to the export file due to permissions.")
+            print("Try running the program with different permissions or choose another folder.")
+            logging.error("PermissionError while writing to %s: %s", file_path, E)
